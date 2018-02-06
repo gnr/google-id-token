@@ -79,14 +79,14 @@ module GoogleIDToken
     #   The optional client-id ("azp" field) value
     #
     # @return [Hash] The decoded ID token
-    def check(token, aud, cid = nil)
+    def check(token, aud, cid = nil, jwt_custom_options = {})
       synchronize do
-        payload = check_cached_certs(token, aud, cid)
+        payload = check_cached_certs(token, aud, cid, jwt_custom_options)
 
         unless payload
           # no certs worked, might've expired, refresh
           if refresh_certs
-            payload = check_cached_certs(token, aud, cid)
+            payload = check_cached_certs(token, aud, cid, jwt_custom_options)
 
             unless payload
               raise SignatureError, 'Token not verified as issued by Google'
@@ -105,14 +105,14 @@ module GoogleIDToken
     # tries to validate the token against each cached cert.
     # Returns the token payload or raises a ValidationError or
     #  nil, which means none of the certs validated.
-    def check_cached_certs(token, aud, cid)
+    def check_cached_certs(token, aud, cid, jwt_custom_options = {})
       payload = nil
 
       # find first public key that validates this token
       @certs.detect do |key, cert|
         begin
           public_key = cert.public_key
-          decoded_token = JWT.decode(token, public_key, !!public_key, { :algorithm => 'RS256' })
+          decoded_token = JWT.decode(token, public_key, !!public_key, jwt_custom_options.merge({ :algorithm => 'RS256' }))
           payload = decoded_token.first
 
           # in Feb 2013, the 'cid' claim became the 'azp' claim per changes
