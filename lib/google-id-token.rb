@@ -162,14 +162,10 @@ module GoogleIDToken
     def old_skool_refresh_certs
       return true unless certs_cache_expired?
 
-      uri = URI(GOOGLE_CERTS_URI)
-      get = Net::HTTP::Get.new uri.request_uri
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = true
-      res = http.request(get)
+      curl = Curl::Easy.http_get(GOOGLE_CERTS_URI)
 
-      if res.is_a?(Net::HTTPSuccess)
-        new_certs = Hash[JSON.load(res.body).map do |key, cert|
+      if curl.response_code.to_i == 200 
+        new_certs = Hash[JSON.load(curl.body_str).map do |key, cert|
           [key, OpenSSL::X509::Certificate.new(cert)]
         end]
         @certs.merge! new_certs
